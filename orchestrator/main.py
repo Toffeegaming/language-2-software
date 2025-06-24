@@ -71,7 +71,7 @@ async def lifespan(app: FastAPI):
 app = FastAPI(lifespan=lifespan)
 
 @app.post('/route')
-async def route(request: Request):
+async def route(request: Request, question: str):
     """
     Expects a JSON body with a "question" field.
     Example:
@@ -79,8 +79,10 @@ async def route(request: Request):
         "question": "Please create code for this... /Please create a diagram for this... /Please create a text for this..."
     }
     """
-    data = await request.json()
-    question = data.get("question", "").strip()
+
+    if not question:
+        raise HTTPException(status_code=400, detail="Question is required")
+    
     oai_manager = request.app.state.oai_manager
     response = await orchestrator(question, oai_manager)
     if response is None:
