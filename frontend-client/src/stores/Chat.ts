@@ -26,13 +26,29 @@ export const useChatStore = defineStore('chat', () => {
   const isTyping = ref(false)
 
   const sendMessage = async () => {
-    if (!newMessage.value.trim() || isTyping.value) return
+    try {
+      if (!newMessage.value.trim() || isTyping.value) return
 
-    const messageText = newMessage.value.trim()
-    addMessage(messageText, 'user')
-    newMessage.value = ''
+      isTyping.value = true
 
-    await simulateBotResponse(messageText)
+      if (!axios) {
+        throw new Error('Axios unavailable')
+      }
+
+      const messageText = newMessage.value.trim()
+      addMessage(messageText, 'user')
+      newMessage.value = ''
+
+      const { postQuestion } = useApiClient()
+
+      const botMessage = await postQuestion(axios, messageText)
+
+      addMessage(botMessage, 'bot')
+    } catch {
+      addMessage('Er ging iets mis, probeer het later opnieuw', 'bot')
+    } finally {
+      isTyping.value = false
+    }
   }
 
   function addMessage(text: string, sender: 'user' | 'bot') {
@@ -43,27 +59,6 @@ export const useChatStore = defineStore('chat', () => {
       timestamp: new Date(),
     }
     messages.value.push(message)
-  }
-
-  const simulateBotResponse = async (userMessage: string) => {
-    isTyping.value = true
-
-    // Simulate thinking time
-    await new Promise((resolve) => setTimeout(resolve, 1000 + Math.random() * 2000))
-
-    // Simple bot responses
-    const responses = [
-      "That's interesting! Tell me more.",
-      'I understand. How can I help you with that?',
-      'Thanks for sharing that with me.',
-      'Let me think about that for a moment...',
-      "That's a great question! Here's what I think...",
-    ]
-
-    const randomResponse = responses[Math.floor(Math.random() * responses.length)]
-
-    addMessage(randomResponse, 'bot')
-    isTyping.value = false
   }
 
   const availableModels = ref<string[]>([])
@@ -94,7 +89,6 @@ export const useChatStore = defineStore('chat', () => {
     newMessage,
     messages,
     isTyping,
-    simulateBotResponse,
     sendMessage,
     availableModels,
     getModels,

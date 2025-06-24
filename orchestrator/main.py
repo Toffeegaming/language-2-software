@@ -2,7 +2,7 @@ from fastapi import FastAPI, Request, HTTPException
 from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 
-
+from pydantic import BaseModel
 from dotenv import load_dotenv
 import os
 
@@ -81,8 +81,11 @@ async def get_models(request: Request):
     oai_manager = request.app.state.oai_manager
     return {"available_models": oai_manager.available_models}
 
+class QuestionModel(BaseModel):
+    text: str
+
 @app.post('/route')
-async def route(request: Request, question: str):
+async def route(request: Request, question: QuestionModel):
     """
     Expects a JSON body with a "question" field.
     Example:
@@ -95,7 +98,7 @@ async def route(request: Request, question: str):
         raise HTTPException(status_code=400, detail="Question is required")
     
     oai_manager = request.app.state.oai_manager
-    response = await orchestrator(question, oai_manager)
+    response = await orchestrator(question.text, oai_manager)
     if response is None:
         raise HTTPException(status_code=500, detail="Internal Server Error")
     
