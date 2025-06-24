@@ -1,4 +1,5 @@
 from fastapi import FastAPI, Request
+from fastapi.responses import StreamingResponse
 from contextlib import asynccontextmanager
 from openai import AsyncOpenAI
 import os
@@ -22,12 +23,22 @@ class OpenAiManager:
 
     async def get_response(self, message: str):
         response = await self.client.responses.create(
-            model=self.available_models[0],
+            model=self.available_models[1],
             instructions="You are a coding assistant that talks like a pirate.",
             input=message,
         )
-
         return {"message": "Test successful", "response": response.output_text}
+
+    async def get_streaming_response(self, message: str):
+        stream = await self.client.responses.create(
+            model=self.available_models[1],
+            input=message,
+            stream=True,
+        )
+
+        async for event in stream:
+            if event.type == "response.output_text.delta":
+                yield event.delta
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -50,20 +61,11 @@ async def get_models(request: Request):
     return {"available_models": oai_manager.available_models}
 
 @app.post("/response")
-async def test(request: Request, message: str):
+async def response(request: Request, message: str):
     return await request.app.state.oai_manager.get_response(message)
 
+@app.post("/streaming-response")
+async def stream_response(request: Request, message: str):
+    oai_manager = request.app.state.oai_manager
 
-# streaming
-# async def main():
-#     stream = await client.responses.create(
-#         model="gpt-4o",
-#         input="Write a one-sentence bedtime story about a unicorn.",
-#         stream=True,
-#     )
-#
-#     async for event in stream:
-#         print(event)
-#
-#
-# asyncio.run(main())
+    return StreamingResponse(oai_manager.get_streaming_response(message), media_type="text/plain")
