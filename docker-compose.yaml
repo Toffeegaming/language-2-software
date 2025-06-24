@@ -1,12 +1,12 @@
 version: '3.9'
 
 services:
-  # web-client:
-  #   build:
-  #     context: ./frontend-client/
-  #     dockerfile: Dockerfile
-  #   ports:
-  #     - "80:80"
+  web-client:
+    build:
+      context: ./frontend-client/
+      dockerfile: Dockerfile
+    ports:
+      - "80:80"
       
   orchestrator:
     build:

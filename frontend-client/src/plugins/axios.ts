@@ -1,17 +1,15 @@
-import axios, {
-  type AxiosInstance,
-} from "axios";
-import type { App } from "vue";
+import axios, { type AxiosInstance } from 'axios'
+import type { App } from 'vue'
 
 export default {
   async install(app: App) {
     const axiosClient: AxiosInstance = axios.create({
-      baseURL: "http://localhost:8001",
+      baseURL: 'http://localhost:8000',
       headers: {
-        "Content-Type": "application/json",
+        'Content-Type': 'application/json',
       },
-    });
+    })
 
-    app.provide("axios", axiosClient);
+    app.provide('axios', axiosClient)
   },
-};
+}
