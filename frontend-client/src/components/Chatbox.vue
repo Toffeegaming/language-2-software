@@ -3,13 +3,14 @@ import { nextTick, onMounted, ref, watch } from 'vue'
 import { useChatStore } from '@/stores/Chat.ts'
 import { MessageCircle, Moon, Send, Sun } from 'lucide-vue-next'
 
-import MarkdownIt from 'markdown-it'
+import markdownit from 'markdown-it'
 import hljs from 'highlight.js'
+import markdownItTextualUml from 'markdown-it-textual-uml'
+import mermaid from 'mermaid'
 
-// mermaid.initialize({ startOnLoad: true })
-// await mermaid.run()
+mermaid.initialize({ startOnLoad: false })
 
-const markdown = new MarkdownIt({
+const markdown = new markdownit({
   html: true,
   breaks: true,
   linkify: true,
@@ -23,7 +24,7 @@ const markdown = new MarkdownIt({
 
     return '' // use external default escaping
   },
-})
+}).use(markdownItTextualUml)
 
 const renderMessage = (message: string) => {
   // replace \\n with \n
@@ -60,7 +61,7 @@ const toggleTheme = () => {
 }
 
 // Initialize theme
-onMounted(() => {
+onMounted(async () => {
   const savedTheme = localStorage.getItem('theme')
   const systemPrefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches
 
@@ -69,7 +70,15 @@ onMounted(() => {
 })
 
 // Watch for new messages and scroll to bottom
-watch(chatStore.messages, scrollToBottom, { deep: true })
+watch(
+  chatStore.messages,
+  async () => {
+    await nextTick()
+    await mermaid.run()
+    scrollToBottom()
+  },
+  { deep: true },
+)
 </script>
 
 <template>
