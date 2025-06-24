@@ -3,6 +3,39 @@ import { nextTick, onMounted, ref, watch } from 'vue'
 import { useChatStore } from '@/stores/Chat.ts'
 import { MessageCircle, Moon, Send, Sun } from 'lucide-vue-next'
 
+import MarkdownIt from 'markdown-it'
+import hljs from 'highlight.js'
+
+// mermaid.initialize({ startOnLoad: true })
+// await mermaid.run()
+
+const markdown = new MarkdownIt({
+  html: true,
+  breaks: true,
+  linkify: true,
+  typographer: true,
+  highlight: function (str, lang) {
+    if (lang && hljs.getLanguage(lang)) {
+      try {
+        return hljs.highlight(str, { language: lang }).value
+      } catch (__) {}
+    }
+
+    return '' // use external default escaping
+  },
+})
+
+const renderMessage = (message: string) => {
+  // replace \\n with \n
+  message = message.replace(/\\n/g, '\n')
+
+  // replace escaped " characters with actual quotes
+  message = message.replace(/\\\"/g, '"')
+
+  // render the markdown content
+  return markdown.render(message || 'Bericht')
+}
+
 const chatStore = useChatStore()
 
 const messagesContainer = ref<HTMLElement>()
@@ -69,7 +102,7 @@ watch(chatStore.messages, scrollToBottom, { deep: true })
           :class="['message', message.sender === 'user' ? 'user-message' : 'bot-message']"
         >
           <div class="message-content">
-            <p class="message-text">{{ message.text }}</p>
+            <p class="message-text" v-html="renderMessage(message.text)" />
             <span class="message-time">{{ formatTime(message.timestamp) }}</span>
           </div>
         </div>
