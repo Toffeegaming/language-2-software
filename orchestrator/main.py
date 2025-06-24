@@ -5,10 +5,10 @@ import os
 
 from contextlib import asynccontextmanager
 
-from .openai_manager import OpenAiManager
-from .agents.diagram_agent import DiagramAgent
-from .agents.text_agent import TextAgent
-from .agents.software_agent import SoftwareAgent
+from openai_manager import OpenAiManager
+from agents.diagram_agent import DiagramAgent
+from agents.text_agent import TextAgent
+from agents.software_agent import SoftwareAgent
     
 class Orchestrator:
     def __init__(self, oai_manager):
