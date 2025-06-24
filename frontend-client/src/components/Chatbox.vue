@@ -8,7 +8,7 @@ import hljs from 'highlight.js'
 import markdownItTextualUml from 'markdown-it-textual-uml'
 import mermaid from 'mermaid'
 
-mermaid.initialize({ startOnLoad: false })
+mermaid.initialize({ startOnLoad: false, theme: 'neutral' })
 
 const markdown = new markdownit({
   html: true,
@@ -118,12 +118,12 @@ watch(
 
         <div v-if="chatStore.isTyping" class="typing-indicator">
           <div class="typing-content">
+            <span class="typing-text">Ik ben aan het nadenken</span>
             <div class="typing-dots">
               <span class="dot"></span>
               <span class="dot"></span>
               <span class="dot"></span>
             </div>
-            <span class="typing-text">Ik ben aan het nadenken...</span>
           </div>
         </div>
       </div>
@@ -329,7 +329,7 @@ watch(
   border-radius: 1.125rem;
   word-wrap: break-word;
   transition: all 0.3s ease;
-  max-width: 70%;
+  max-width: 90%;
 }
 
 .user-message .message-content {
