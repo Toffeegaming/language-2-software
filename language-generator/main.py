@@ -24,10 +24,9 @@ class OpenAiManager:
     async def get_response(self, message: str):
         response = await self.client.responses.create(
             model=self.available_models[1],
-            instructions="You are a coding assistant that talks like a pirate.",
             input=message,
         )
-        return {"message": "Test successful", "response": response.output_text}
+        return {"response": response.output_text}
 
     async def get_streaming_response(self, message: str):
         stream = await self.client.responses.create(
