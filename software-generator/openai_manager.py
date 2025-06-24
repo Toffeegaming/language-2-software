@@ -5,8 +5,10 @@ class OpenAiManager:
         self.client = AsyncOpenAI(api_key=api_key)
         self.available_models = []
         self.prompt = """
-        Generate the requested text as a plain string 
-        with no extra formatting, code blocks, or JSON. Return only the text itself.
+        Write the complete source code for the requested software.
+
+        Only output a markdown code block with the language specified (e.g., ```python). 
+        Do not include any explanations, comments, strings, or formatting outside the code block.
         """
 
     async def get_available_models(self):
@@ -33,7 +35,15 @@ class OpenAiManager:
             instructions=self.prompt,
             input=message,
         )
-        return response.output_text
+
+        output = response.output_text
+        # Remove both escaped and unescaped double quotes at the start/end
+        if (output.startswith('"""') and output.endswith('"""')) or (output.startswith('"') and output.endswith('"')):
+            output = output[1:-1]
+        if (output.startswith('\\"') and output.endswith('\\"')):
+            output = output[2:-2]
+
+        return output
 
     async def get_streaming_response(self, message: str, model: str):
         if not model:

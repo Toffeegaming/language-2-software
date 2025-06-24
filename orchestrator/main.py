@@ -1,5 +1,8 @@
 from fastapi import FastAPI, Request, HTTPException
 from fastapi.responses import JSONResponse
+from fastapi.middleware.cors import CORSMiddleware
+
+
 from dotenv import load_dotenv
 import os
 
@@ -28,21 +31,7 @@ class Orchestrator:
         """
         req = request.lower()
         await self.oai_manager.get_available_models()
-        instructions = """
-        You are an orchestrator that routes requests to different agents based on the content of the request.
-
-        You have three agents at your disposal:
-            1. DiagramAgent: Handles requests related to diagrams and visualizations.
-            2. TextAgent: Handles requests related to text generation and explanations. 
-            3. SoftwareAgent: Handles requests related to software development and coding tasks.
-
-        Please return either "DiagramAgent", "TextAgent", or "SoftwareAgent" based on the request content.
-        If the request does not match any of these categories, return "UnknownAgent".
-
-        return just the name of the agent without any additional text.
-        """
-        response = await self.oai_manager.get_response(message=req, instructions=instructions)
-
+        response = await self.oai_manager.get_response(message=req)
         
         print(f"Response from OpenAI: {response['response']}")
         return response['response']
@@ -69,6 +58,28 @@ async def lifespan(app: FastAPI):
     yield
 
 app = FastAPI(lifespan=lifespan)
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+def strip_outer_quotes(s):
+    s = s.strip()
+    # Remove one layer of quotes if present
+    if (s.startswith('"') and s.endswith('"')) or (s.startswith("'") and s.endswith("'")):
+        s = s[1:-1]
+    # Remove escaped quotes if present
+    if (s.startswith('\\"') and s.endswith('\\"')) or (s.startswith("\\'") and s.endswith("\\'")):
+        s = s[2:-2]
+    return s
+
+@app.get("/models")
+async def get_models(request: Request):
+    oai_manager = request.app.state.oai_manager
+    return {"available_models": oai_manager.available_models}
 
 @app.post('/route')
 async def route(request: Request, question: str):
@@ -87,7 +98,9 @@ async def route(request: Request, question: str):
     response = await orchestrator(question, oai_manager)
     if response is None:
         raise HTTPException(status_code=500, detail="Internal Server Error")
-    return JSONResponse(content=response)
+    
+    response = strip_outer_quotes(response)
+    return {"response": response}
 
 # This function is used to handle the user question and generate a response
 async def orchestrator(question: str, oai_manager):
@@ -119,4 +132,5 @@ async def orchestrator(question: str, oai_manager):
     if not successful_generation:
         print("Failed to generate successful product variations after retries.")
         return {"error": "Failed to process the request after multiple attempts."}
-    return {"user_response": response}
+    
+    return response

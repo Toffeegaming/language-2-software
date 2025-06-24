@@ -4,9 +4,17 @@ class OpenAiManager:
     def __init__(self, api_key: str):
         self.client = AsyncOpenAI(api_key=api_key)
         self.available_models = []
-        self.prompt = """
-        Generate the requested text as a plain string 
-        with no extra formatting, code blocks, or JSON. Return only the text itself.
+        self.prompt = """"
+        Generate a string containing only the Mermaid diagram syntax 
+        in Markdown format (enclosed in triple backticks and labeled mermaid). 
+
+        Do not include any explanation or extra formatting. Example output:
+
+        ```mermaid
+        flowchart TD
+            Start --> Process
+            Process --> End
+        ```
         """
 
     async def get_available_models(self):
