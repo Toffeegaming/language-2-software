@@ -41,7 +41,9 @@ class Orchestrator:
 
         return just the name of the agent without any additional text.
         """
-        response = await self.oai_manager.get_response(req, instructions)
+        response = await self.oai_manager.get_response(message=req, instructions=instructions)
+
+        
         print(f"Response from OpenAI: {response['response']}")
         return response['response']
 
@@ -68,8 +70,8 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(lifespan=lifespan)
 
-@app.post('orchestrater/route')
-async def orchestrater_route(request: Request):
+@app.post('/orchestrator/route')
+async def orchestrator_route(request: Request):
     """
     Expects a JSON body with a "question" field.
     Example:

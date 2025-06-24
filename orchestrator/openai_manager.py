@@ -18,7 +18,7 @@ class OpenAiManager:
             print(f"Error fetching models: {e}")
             self.available_models = []
 
-    async def get_response(self, message: str, model: str, instructions: str):
+    async def get_response(self, message: str, model: str = None, instructions: str = None):
         if not model:
             if not self.available_models:
                 return {"error": "No available models found."}
