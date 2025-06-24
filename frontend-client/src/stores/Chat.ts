@@ -17,7 +17,7 @@ export const useChatStore = defineStore('chat', () => {
   const messages = ref<Message[]>([
     {
       id: '1',
-      text: 'Hello! How can I help you today?',
+      text: 'Hoi! Wat kan ik voor je doen?',
       sender: 'bot',
       timestamp: new Date(),
     },

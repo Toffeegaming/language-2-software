@@ -264,21 +264,22 @@ watch(chatStore.messages, scrollToBottom, { deep: true })
 .messages-wrapper {
   width: 100%;
   margin: 0;
+  display: flex;
+  flex-direction: column;
 }
 
 .message {
   display: flex;
   margin-bottom: 1rem;
-  max-width: 70%;
+  width: 100%;
 }
 
 .user-message {
-  align-self: flex-end;
-  margin-left: auto;
+  justify-content: flex-end;
 }
 
 .bot-message {
-  align-self: flex-start;
+  justify-content: flex-start;
 }
 
 .message-content {
@@ -286,6 +287,7 @@ watch(chatStore.messages, scrollToBottom, { deep: true })
   border-radius: 1.125rem;
   word-wrap: break-word;
   transition: all 0.3s ease;
+  max-width: 70%;
 }
 
 .user-message .message-content {
@@ -295,7 +297,7 @@ watch(chatStore.messages, scrollToBottom, { deep: true })
 }
 
 .bot-message .message-content {
-  background: #f1f5f9;
+  background: #e3e3e3;
   color: #1e293b;
   border-bottom-left-radius: 0.25rem;
 }
