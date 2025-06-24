@@ -1,4 +1,4 @@
-from agents.openai_manager import OpenAiManager
+from ..openai_manager import OpenAiManager
 
 class TextAgent():
     def handle(self, request: str) -> str:
