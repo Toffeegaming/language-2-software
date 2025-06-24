@@ -70,8 +70,8 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(lifespan=lifespan)
 
-@app.post('/orchestrator/route')
-async def orchestrator_route(request: Request):
+@app.post('/route')
+async def route(request: Request):
     """
     Expects a JSON body with a "question" field.
     Example:
@@ -82,13 +82,13 @@ async def orchestrator_route(request: Request):
     data = await request.json()
     question = data.get("question", "").strip()
     oai_manager = request.app.state.oai_manager
-    response = await question_orchestrator(question, oai_manager)
+    response = await orchestrator(question, oai_manager)
     if response is None:
         raise HTTPException(status_code=500, detail="Internal Server Error")
     return JSONResponse(content=response)
 
 # This function is used to handle the user question and generate a response
-async def question_orchestrator(question: str, oai_manager):
+async def orchestrator(question: str, oai_manager):
     """
     This function is the orchestrator used to handle the user question and generate a response.
     Expects a question string and returns a JSON response with the generated content.
