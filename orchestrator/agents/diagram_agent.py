@@ -1,4 +1,4 @@
-from agents.openai_manager import OpenAiManager
+from ..openai_manager import OpenAiManager
 
 class DiagramAgent():
     def handle(self, request: str) -> str:
