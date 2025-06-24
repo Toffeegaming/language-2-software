@@ -6,4 +6,10 @@ Each component or service has it's own subfolder where all the code and dockerfi
 
 ## Running the stack
 
-Use `docker compose up` to start the stack and build all Docker images.
+Build the stack before starting it.
+
+```docker compose build```
+
+Now start the stack.
+
+```docker compose up```
