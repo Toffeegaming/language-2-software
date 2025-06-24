@@ -8,8 +8,12 @@ Each component or service has it's own subfolder where all the code and dockerfi
 
 Build the stack before starting it.
 
-```docker compose build```
+```
+docker compose build
+```
 
 Now start the stack.
 
-```docker compose up```
+```
+docker compose up
+```
