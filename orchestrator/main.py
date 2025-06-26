@@ -30,7 +30,6 @@ class Orchestrator:
         If the request does not match any of these categories, it returns "UnknownAgent".
         """
         req = request.lower()
-        await self.oai_manager.get_available_models()
         response = await self.oai_manager.get_response(message=req)
         
         print(f"Response from OpenAI: {response['response']}")
