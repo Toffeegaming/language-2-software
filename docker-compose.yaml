@@ -45,3 +45,21 @@ services:
       - .env
     ports:
       - "8003:8003"
+
+  rabbitmq:
+    build:
+      context: ./rabbitmq
+    container_name: rabbitmq
+    ports:
+      - "5672:5672"    # AMQP protocol for clients
+      - "15672:15672"  # Management UI
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
+    environment:
+      - RABBITMQ_DEFAULT_USER=guest
+      - RABBITMQ_DEFAULT_PASS=guest
+      - RABBITMQ_DEFAULT_VHOST=/
+    restart: unless-stopped
+
+volumes:
+  rabbitmq_data:
