@@ -7,6 +7,7 @@ from pydantic_ai import Agent
 import requests
 from contextlib import asynccontextmanager
 import pika
+import threading
 
 def call_language_agent(request: str) -> str:
     url = "http://language-agent:8011/run"
@@ -40,6 +41,44 @@ def call_software_agent(request: str) -> str:
 
 logfire.configure(token=os.getenv("LOGFIRE_WRITE_TOKEN"), service_name="orchestator")
 
+class RabbitManager:
+    def __init__(self, connection):
+        self.connection = connection
+        self.thread = None
+        self.stop_event = threading.Event()
+
+    def get_channel(self):
+        return self.connection.channel()
+
+    def start_in_background(self):
+        self.thread = threading.Thread(target=self.setup_queue, daemon=True)
+        self.thread.start()
+
+    def setup_queue(self):
+        channel = self.get_channel()
+        channel.queue_declare(queue='bff')
+        channel.basic_consume(queue='bff', on_message_callback=self.callback, auto_ack=True)
+        print("Waiting for messages. To exit press CTRL+C")
+        channel.start_consuming()
+        # while not self.stop_event.is_set():
+        #     try:
+        #         channel.connection.process_data_events(time_limit=1)
+        #     except Exception:
+        #         break
+
+    def callback(self, ch, method, properties, body):
+        print(f"Received message: {body}")
+        # Here you can add logic to process the message
+
+    def close(self):
+        self.stop_event.set()
+        try:
+            self.connection.close()
+        except Exception:
+            pass
+        if self.thread and self.thread.is_alive():
+            self.thread.join(timeout=5)
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     app.state.agent = Agent(
@@ -52,11 +91,10 @@ async def lifespan(app: FastAPI):
         instrument=True,
     )
 
-    app.state.connection = pika.BlockingConnection(pika.ConnectionParameters('rabbitmq'))
-
+    app.state.rabbit_manager = RabbitManager(pika.BlockingConnection(pika.ConnectionParameters('rabbitmq')))
+    app.state.rabbit_manager.start_in_background()
     yield
-
-    app.state.connection.close()
+    app.state.rabbit_manager.close()
 
 app = FastAPI(lifespan=lifespan)
 app.add_middleware(
@@ -94,7 +132,6 @@ async def route(request: Request, question: QuestionModel):
 
     agent = request.app.state.agent
     response = await agent.run(question.text)
-
     if response is None:
         raise HTTPException(status_code=500, detail="Internal Server Error")
     return response

@@ -8,13 +8,21 @@ import pika
 
 logfire.configure(token=os.getenv("LOGFIRE_WRITE_TOKEN"), service_name="api-gateway")
 
+class RabbitManager:
+    def __init__(self, connection):
+        self.connection = connection
+
+    def get_channel(self):
+        return self.connection.channel()
+
+    def close(self):
+        self.connection.close()
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    app.state.connection = pika.BlockingConnection(pika.ConnectionParameters('rabbitmq'))
-
+    app.state.rabbit_manager = RabbitManager(pika.BlockingConnection(pika.ConnectionParameters('rabbitmq')))
     yield
-
-    app.state.connection.close()
+    app.state.rabbit_manager.close()
 
 app = FastAPI(lifespan=lifespan)
 app.add_middleware(
@@ -43,12 +51,9 @@ async def route(request: Request, question: QuestionModel):
         raise HTTPException(status_code=400, detail="Question is required")
 
     try:
-        conn = request.app.state.connection
-        channel = conn.channel()
+        channel = request.app.state.rabbit_manager.get_channel()
         channel.queue_declare(queue='bff')
-        channel.basic_publish(exchange='',
-                              routing_key='orchestrator',
-                              body='Hello orchestrator from your BFF the frontend!')
+        channel.basic_publish(exchange='', routing_key='bff', body='Hello orchestrator from your BFF the frontend!')
         return {"status": "Message sent to RabbitMQ successfully"}
 
     except Exception as e:
