@@ -1,8 +1,6 @@
 openai
 fastapi
 uvicorn
-dotenv
-requests
 logfire
 logfire[fastapi]
 pydantic-ai

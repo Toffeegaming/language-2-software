@@ -46,6 +46,7 @@ export const useApiClient = () => ({
 
   async postQuestion(axios: AxiosInstance, question: string) {
     const response = await ApiClient.Instance.post(axios, '/route', { text: question })
-    return response.data.response
+    console.log('Response from API:', response)
+    return response.data.output
   },
 })
