@@ -372,7 +372,7 @@ watch(
   align-items: center;
   gap: 0.5rem;
   padding: 0.75rem 1rem;
-  background: #f1f5f9;
+  background: #e3e3e3;
   border-radius: 1.125rem;
   border-bottom-left-radius: 0.25rem;
 }

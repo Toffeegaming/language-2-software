@@ -8,6 +8,7 @@ import requests
 from contextlib import asynccontextmanager
 import pika
 import threading
+import asyncio
 
 def call_language_agent(request: str) -> str:
     url = "http://language-agent:8011/run"
@@ -42,10 +43,10 @@ def call_software_agent(request: str) -> str:
 logfire.configure(token=os.getenv("LOGFIRE_WRITE_TOKEN"), service_name="orchestator")
 
 class RabbitManager:
-    def __init__(self, connection):
-        self.connection = connection
+    def __init__(self, agent: Agent):
+        self.connection = pika.BlockingConnection(pika.ConnectionParameters('rabbitmq'))
         self.thread = None
-        self.stop_event = threading.Event()
+        self.agent = agent
 
     def get_channel(self):
         return self.connection.channel()
@@ -54,30 +55,41 @@ class RabbitManager:
         self.thread = threading.Thread(target=self.setup_queue, daemon=True)
         self.thread.start()
 
+    async def process_message(self, message):
+        response = await self.agent.run(message)
+        return response.output
+
     def setup_queue(self):
         channel = self.get_channel()
-        channel.queue_declare(queue='bff')
-        channel.basic_consume(queue='bff', on_message_callback=self.callback, auto_ack=True)
-        print("Waiting for messages. To exit press CTRL+C")
-        channel.start_consuming()
-        # while not self.stop_event.is_set():
-        #     try:
-        #         channel.connection.process_data_events(time_limit=1)
-        #     except Exception:
-        #         break
+        channel.queue_declare(queue='orchestrator', durable=True)
 
-    def callback(self, ch, method, properties, body):
-        print(f"Received message: {body}")
-        # Here you can add logic to process the message
+        channel.basic_qos(prefetch_count=1)
+        channel.basic_consume(queue='orchestrator', on_message_callback=self.on_request)
+
+        print("Waiting RPC request on 'orchestrator' queue.")
+        channel.start_consuming()
+
+    def on_request(self, ch, method, properties, body):
+        message = str(body)
+
+        try:
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+            response = loop.run_until_complete(self.process_message(message))
+        finally:
+            loop.close()
+
+        ch.basic_publish(exchange='',
+                         routing_key=properties.reply_to,
+                         body=response,
+                         properties=pika.BasicProperties(
+                             correlation_id=properties.correlation_id,
+                             delivery_mode = pika.DeliveryMode.Persistent,
+                         ))
+        ch.basic_ack(delivery_tag=method.delivery_tag)
 
     def close(self):
-        self.stop_event.set()
-        try:
-            self.connection.close()
-        except Exception:
-            pass
-        if self.thread and self.thread.is_alive():
-            self.thread.join(timeout=5)
+        self.connection.close()
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -91,7 +103,7 @@ async def lifespan(app: FastAPI):
         instrument=True,
     )
 
-    app.state.rabbit_manager = RabbitManager(pika.BlockingConnection(pika.ConnectionParameters('rabbitmq')))
+    app.state.rabbit_manager = RabbitManager(app.state.agent)
     app.state.rabbit_manager.start_in_background()
     yield
     app.state.rabbit_manager.close()
@@ -135,19 +147,3 @@ async def route(request: Request, question: QuestionModel):
     if response is None:
         raise HTTPException(status_code=500, detail="Internal Server Error")
     return response
-
-@app.get('/rabbitmq')
-async def kut_konijn(request: Request):
-    """
-    Test RabbitMQ connection.
-    """
-    try:
-        conn = request.app.state.connection
-        channel = conn.channel()
-        channel.queue_declare(queue='hello')
-        channel.basic_publish(exchange='',
-            routing_key='hello',
-            body='Hello World!')
-
-    except Exception as e:
-        return f"Error connecting to RabbitMQ: {e}"
