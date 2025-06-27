@@ -1,11 +1,15 @@
 from fastapi import FastAPI, Request, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
-import os
 import logfire
 from pydantic_ai import Agent
 import requests
 from contextlib import asynccontextmanager
+import pika, sys, os
+
+
+connection = pika.BlockingConnection(pika.ConnectionParameters('localhost'))
+channel = connection.channel()
 
 def call_language_agent(request: str) -> str:
     url = "http://language-agent:8011/run"
@@ -92,3 +96,27 @@ async def route(request: Request, question: QuestionModel):
     if response is None:
         raise HTTPException(status_code=500, detail="Internal Server Error")
     return response
+
+def main():
+    connection = pika.BlockingConnection(pika.ConnectionParameters(host='localhost'))
+    channel = connection.channel()
+
+    channel.queue_declare(queue='hello')
+
+    def callback(ch, method, properties, body):
+        print(f" [x] Received {body}")
+
+    channel.basic_consume(queue='hello', on_message_callback=callback, auto_ack=True)
+
+    print(' [*] Waiting for messages. To exit press CTRL+C')
+    channel.start_consuming()
+
+if __name__ == '__main__':
+    try:
+        main()
+    except KeyboardInterrupt:
+        print('Interrupted')
+        try:
+            sys.exit(0)
+        except SystemExit:
+            os._exit(0)

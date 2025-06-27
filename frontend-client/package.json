@@ -12,6 +12,7 @@
     "format": "prettier --write src/"
   },
   "dependencies": {
+    "amqplib": "^0.10.8",
     "axios": "^1.10.0",
     "highlight.js": "^11.11.1",
     "lucide-vue-next": "^0.523.0",

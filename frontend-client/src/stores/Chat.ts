@@ -11,7 +11,7 @@ interface Message {
 }
 
 export const useChatStore = defineStore('chat', () => {
-  const axios = inject<AxiosInstance>('axios')
+  // const axios = inject<AxiosInstance>('axios')
 
   const newMessage = ref('')
   const messages = ref<Message[]>([
@@ -31,9 +31,9 @@ export const useChatStore = defineStore('chat', () => {
 
       isTyping.value = true
 
-      if (!axios) {
-        throw new Error('Axios unavailable')
-      }
+      // if (!axios) {
+      //   throw new Error('Axios unavailable')
+      // }
 
       const messageText = newMessage.value.trim()
       addMessage(messageText, 'user')
