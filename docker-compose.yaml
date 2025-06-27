@@ -16,6 +16,33 @@ services:
       - .env
     ports:
       - "8000:8000"
+
+  language-agent:
+    build:
+      context: ./language-agent/
+      dockerfile: Dockerfile
+    env_file:
+      - .env
+    ports:
+      - "8011:8011"
+
+  diagram-agent:
+    build:
+      context: ./diagram-agent/
+      dockerfile: Dockerfile
+    env_file:
+      - .env
+    ports:
+      - "8012:8012"
+
+  software-agent:
+    build:
+      context: ./software-agent/
+      dockerfile: Dockerfile
+    env_file:
+      - .env
+    ports:
+      - "8013:8013"
         
   language-generator:
     build:
