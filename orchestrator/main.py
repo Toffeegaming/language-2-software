@@ -32,7 +32,6 @@ class Orchestrator:
         req = request.lower()
         response = await self.oai_manager.get_response(message=req)
         
-        print(f"Response from OpenAI: {response['response']}")
         return response['response']
 
     async def route(self, request: str) -> str:
