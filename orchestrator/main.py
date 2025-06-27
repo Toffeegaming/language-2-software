@@ -6,6 +6,20 @@ import logfire
 from pydantic_ai import Agent
 import requests
 from contextlib import asynccontextmanager
+import pika
+
+try:
+    connection = pika.BlockingConnection(pika.ConnectionParameters('rabbitmq'))
+    channel = connection.channel()
+    channel.queue_declare(queue='hello')
+
+    channel.basic_publish(exchange='',
+                          routing_key='hello',
+                          body='Hello World!')
+    print(" [x] Sent 'Hello World!'")
+    connection.close()
+except Exception as e:
+    print(f"Error connecting to RabbitMQ: {e}")
 
 def call_language_agent(request: str) -> str:
     url = "http://language-agent:8011/run"
@@ -52,6 +66,7 @@ async def lifespan(app: FastAPI):
     )
 
     yield
+
 app = FastAPI(lifespan=lifespan)
 app.add_middleware(
     CORSMiddleware,

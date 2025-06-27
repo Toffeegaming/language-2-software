@@ -5,6 +5,8 @@ services:
     build:
       context: ./frontend-client/
       dockerfile: Dockerfile
+    depends_on:
+      - orchestrator
     ports:
       - "80:80"
       
@@ -14,6 +16,8 @@ services:
       dockerfile: Dockerfile
     env_file:
       - .env
+    depends_on:
+      - rabbitmq
     ports:
       - "8000:8000"
 
@@ -23,6 +27,8 @@ services:
       dockerfile: Dockerfile
     env_file:
       - .env
+    depends_on:
+      - orchestrator
     ports:
       - "8011:8011"
 
@@ -32,6 +38,8 @@ services:
       dockerfile: Dockerfile
     env_file:
       - .env
+    depends_on:
+      - orchestrator
     ports:
       - "8012:8012"
 
@@ -41,6 +49,8 @@ services:
       dockerfile: Dockerfile
     env_file:
       - .env
+    depends_on:
+      - orchestrator
     ports:
       - "8013:8013"
         
@@ -50,6 +60,8 @@ services:
       dockerfile: Dockerfile
     env_file:
       - .env
+    depends_on:
+      - language-agent
     ports:
       - "8001:8001"
 
@@ -60,6 +72,8 @@ services:
       dockerfile: Dockerfile
     env_file:
       - .env
+    depends_on:
+      - diagram-agent
     ports:
       - "8002:8002"
 
@@ -70,6 +84,8 @@ services:
       dockerfile: Dockerfile
     env_file:
       - .env
+    depends_on:
+      - software-agent
     ports:
       - "8003:8003"
 
