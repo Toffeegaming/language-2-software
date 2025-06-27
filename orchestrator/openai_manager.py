@@ -24,7 +24,6 @@ class OpenAiManager:
             async for model in self.client.models.list():
                 all_models.append(model.id)
             # Filter for chat/completion models if needed
-            print(f"Available models: {all_models}")
             self.available_models = all_models
         except Exception as e:
             print(f"Error fetching models: {e}")

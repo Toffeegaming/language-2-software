@@ -91,5 +91,4 @@ async def route(request: Request, question: QuestionModel):
 
     if response is None:
         raise HTTPException(status_code=500, detail="Internal Server Error")
-
     return response
