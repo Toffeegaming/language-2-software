@@ -8,19 +8,6 @@ import requests
 from contextlib import asynccontextmanager
 import pika
 
-try:
-    connection = pika.BlockingConnection(pika.ConnectionParameters('rabbitmq'))
-    channel = connection.channel()
-    channel.queue_declare(queue='hello')
-
-    channel.basic_publish(exchange='',
-                          routing_key='hello',
-                          body='Hello World!')
-    print(" [x] Sent 'Hello World!'")
-    connection.close()
-except Exception as e:
-    print(f"Error connecting to RabbitMQ: {e}")
-
 def call_language_agent(request: str) -> str:
     url = "http://language-agent:8011/run"
     payload = {"message": request}
@@ -65,7 +52,11 @@ async def lifespan(app: FastAPI):
         instrument=True,
     )
 
+    app.state.connection = pika.BlockingConnection(pika.ConnectionParameters('rabbitmq'))
+
     yield
+
+    app.state.connection.close()
 
 app = FastAPI(lifespan=lifespan)
 app.add_middleware(
@@ -107,3 +98,19 @@ async def route(request: Request, question: QuestionModel):
     if response is None:
         raise HTTPException(status_code=500, detail="Internal Server Error")
     return response
+
+@app.get('/rabbitmq')
+async def kut_konijn(request: Request):
+    """
+    Test RabbitMQ connection.
+    """
+    try:
+        conn = request.app.state.connection
+        channel = conn.channel()
+        channel.queue_declare(queue='hello')
+        channel.basic_publish(exchange='',
+            routing_key='hello',
+            body='Hello World!')
+
+    except Exception as e:
+        return f"Error connecting to RabbitMQ: {e}"

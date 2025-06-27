@@ -1,15 +1,20 @@
 version: '3.9'
 
 services:
-  web-client:
-    build:
-      context: ./frontend-client/
-      dockerfile: Dockerfile
-    depends_on:
-      - orchestrator
+  rabbitmq:
+    image: rabbitmq:3-management
+    container_name: rabbitmq
     ports:
-      - "80:80"
-      
+      - "5672:5672"    # AMQP protocol
+      - "15672:15672"  # Management UI
+    healthcheck:
+      test: rabbitmq-diagnostics check_port_connectivity
+      interval: 30s
+      timeout: 30s
+      retries: 5
+    volumes:
+        - rabbitmq_data:/var/lib/rabbitmq
+
   orchestrator:
     build:
       context: ./orchestrator/
@@ -17,9 +22,20 @@ services:
     env_file:
       - .env
     depends_on:
-      - rabbitmq
+      rabbitmq:
+        condition: service_healthy
     ports:
       - "8000:8000"
+
+  web-client:
+    build:
+      context: ./frontend-client/
+      dockerfile: Dockerfile
+    depends_on:
+      orchestrator:
+        condition: service_healthy
+    ports:
+      - "80:80"
 
   language-agent:
     build:
@@ -28,7 +44,8 @@ services:
     env_file:
       - .env
     depends_on:
-      - orchestrator
+      orchestrator:
+        condition: service_healthy
     ports:
       - "8011:8011"
 
@@ -39,7 +56,8 @@ services:
     env_file:
       - .env
     depends_on:
-      - orchestrator
+      orchestrator:
+        condition: service_healthy
     ports:
       - "8012:8012"
 
@@ -50,7 +68,8 @@ services:
     env_file:
       - .env
     depends_on:
-      - orchestrator
+      orchestrator:
+        condition: service_healthy
     ports:
       - "8013:8013"
         
@@ -61,11 +80,11 @@ services:
     env_file:
       - .env
     depends_on:
-      - language-agent
+      language-agent:
+        condition: service_started
     ports:
       - "8001:8001"
 
-      
   diagram-generator:
     build:
       context: ./diagram-generator/
@@ -73,11 +92,11 @@ services:
     env_file:
       - .env
     depends_on:
-      - diagram-agent
+      diagram-agent:
+        condition: service_started
     ports:
       - "8002:8002"
 
-      
   software-generator:
     build:
       context: ./software-generator/
@@ -85,18 +104,10 @@ services:
     env_file:
       - .env
     depends_on:
-      - software-agent
+      software-agent:
+        condition: service_started
     ports:
       - "8003:8003"
-
-  rabbitmq:
-    image: rabbitmq:3-management
-    container_name: rabbitmq
-    ports:
-      - "5672:5672"    # AMQP protocol
-      - "15672:15672"  # Management UI
-    volumes:
-      - rabbitmq_data:/var/lib/rabbitmq
 
 volumes:
   rabbitmq_data:
