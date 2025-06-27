@@ -1,21 +1,53 @@
 version: '3.9'
 
 services:
-  web-client:
-    build:
-      context: ./frontend-client/
-      dockerfile: Dockerfile
+  rabbitmq:
+    image: rabbitmq:3-management
+    container_name: rabbitmq
     ports:
-      - "80:80"
-      
+      - "5672:5672"    # AMQP protocol
+      - "15672:15672"  # Management UI
+    healthcheck:
+      test: rabbitmq-diagnostics check_port_connectivity
+      interval: 30s
+      timeout: 30s
+      retries: 5
+    volumes:
+        - rabbitmq_data:/var/lib/rabbitmq
+
   orchestrator:
     build:
       context: ./orchestrator/
       dockerfile: Dockerfile
     env_file:
       - .env
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
     ports:
       - "8000:8000"
+
+  api-gateway:
+    build:
+      context: ./api-gateway/
+      dockerfile: Dockerfile
+    env_file:
+      - .env
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    ports:
+      - "7999:7999"
+
+  web-client:
+    build:
+      context: ./frontend-client/
+      dockerfile: Dockerfile
+    depends_on:
+      api-gateway:
+        condition: service_healthy
+    ports:
+      - "80:80"
 
   language-agent:
     build:
@@ -23,6 +55,9 @@ services:
       dockerfile: Dockerfile
     env_file:
       - .env
+    depends_on:
+      orchestrator:
+        condition: service_healthy
     ports:
       - "8011:8011"
 
@@ -32,6 +67,9 @@ services:
       dockerfile: Dockerfile
     env_file:
       - .env
+    depends_on:
+      orchestrator:
+        condition: service_healthy
     ports:
       - "8012:8012"
 
@@ -41,6 +79,9 @@ services:
       dockerfile: Dockerfile
     env_file:
       - .env
+    depends_on:
+      orchestrator:
+        condition: service_healthy
     ports:
       - "8013:8013"
         
@@ -50,25 +91,35 @@ services:
       dockerfile: Dockerfile
     env_file:
       - .env
+    depends_on:
+      language-agent:
+        condition: service_started
     ports:
       - "8001:8001"
 
-      
   diagram-generator:
     build:
       context: ./diagram-generator/
       dockerfile: Dockerfile
     env_file:
       - .env
+    depends_on:
+      diagram-agent:
+        condition: service_started
     ports:
       - "8002:8002"
 
-      
   software-generator:
     build:
       context: ./software-generator/
       dockerfile: Dockerfile
     env_file:
       - .env
+    depends_on:
+      software-agent:
+        condition: service_started
     ports:
       - "8003:8003"
+
+volumes:
+  rabbitmq_data:
