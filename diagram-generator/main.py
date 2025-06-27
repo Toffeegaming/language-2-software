@@ -3,6 +3,7 @@ from fastapi.responses import StreamingResponse
 from contextlib import asynccontextmanager
 import os
 from openai_manager import OpenAiManager
+import logfire
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -14,6 +15,9 @@ async def lifespan(app: FastAPI):
     yield
 
 app = FastAPI(lifespan=lifespan)
+
+logfire.configure(token=os.getenv("LOGFIRE_WRITE_TOKEN"), service_name="diagram-generator")
+logfire.instrument_fastapi(app, capture_headers=True)
 
 @app.head("/")
 async def health_check():

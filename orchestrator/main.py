@@ -5,6 +5,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from dotenv import load_dotenv
 import os
+import logfire
 
 from contextlib import asynccontextmanager
 
@@ -65,6 +66,9 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+logfire.configure(token=os.getenv("LOGFIRE_WRITE_TOKEN"), service_name="orchestator")
+logfire.instrument_fastapi(app, capture_headers=True)
 
 def strip_outer_quotes(s):
     s = s.strip()
