@@ -5,3 +5,5 @@ logfire
 logfire[fastapi]
 pydantic-ai
 pydantic-ai[logfire]
+pika
+asyncio
