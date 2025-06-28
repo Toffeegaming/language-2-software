@@ -1,10 +1,8 @@
-from fastapi import FastAPI, Request, HTTPException
+from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel
 import os
 import logfire
 from pydantic_ai import Agent
-import requests
 from contextlib import asynccontextmanager
 import pika
 import threading
@@ -12,45 +10,12 @@ import uuid
 import time
 import asyncio
 
-def call_language_agent(request: str) -> str:
-    url = "http://language-agent:8011/run"
-    payload = {"message": request}
-    try:
-        resp = requests.post(url, params=payload)
-        resp.raise_for_status()
-        return resp.text
-    except Exception as e:
-        return f"Error calling language-agent: {e}"
-
-def call_diagram_agent(request: str) -> str:
-    url = "http://diagram-agent:8012/run"
-    payload = {"message": request}
-    try:
-        resp = requests.post(url, params=payload)
-        resp.raise_for_status()
-        return resp.text
-    except Exception as e:
-        return f"Error calling diagram-agent: {e}"
-
-def call_software_agent(request: str) -> str:
-    url = "http://software-agent:8013/run"
-    payload = {"message": request}
-    try:
-        resp = requests.post(url, params=payload)
-        resp.raise_for_status()
-        return resp.text
-    except Exception as e:
-        return f"Error calling software-agent: {e}"
-
-logfire.configure(token=os.getenv("LOGFIRE_WRITE_TOKEN"), service_name="orchestator")
-
 class RabbitSender:
     def __init__(self):
         self.connection = None
         self.channel = None
         self.callback_queue = None
-        self.response = None
-        self.corr_id = None
+        self.responses = {}
         self._lock = threading.Lock()
         self._connected = threading.Event()
         self._closing = False
@@ -107,38 +72,78 @@ class RabbitSender:
         )
 
     def on_response(self, ch, method, properties, body):
-        if self.corr_id == properties.correlation_id:
-            self.response = body
+        corr_id = properties.correlation_id
+        with self._lock:
+            if corr_id in self.responses:
+                self.responses[corr_id] = body
 
-    def call(self, message: str, timeout=10):
+    def call(self, message: str, routing_key: str, timeout=10):
         if not self._connected.wait(timeout=timeout):
             raise Exception("RabbitMQ not connected")
+        corr_id = str(uuid.uuid4())
         with self._lock:
-            self.response = None
-            self.corr_id = str(uuid.uuid4())
+            self.responses[corr_id] = None
             self.channel.basic_publish(
                 exchange='',
-                routing_key='orchestrator',
+                routing_key=routing_key,
                 properties=pika.BasicProperties(
                     reply_to=self.callback_queue,
-                    correlation_id=self.corr_id,
+                    correlation_id=corr_id,
                     delivery_mode=pika.DeliveryMode.Persistent
                 ),
                 body=message
             )
-            # Wait for response
-            start = time.time()
-            while self.response is None and (time.time() - start) < timeout:
-                time.sleep(0.01)
-            if self.response is None:
+        # Wait for response
+        start = time.time()
+        while True:
+            with self._lock:
+                response = self.responses[corr_id]
+            if response is not None:
+                with self._lock:
+                    del self.responses[corr_id]
+                return response
+            if (time.time() - start) > timeout:
+                with self._lock:
+                    del self.responses[corr_id]
                 raise TimeoutError("No response from RPC call")
-            return self.response
+            time.sleep(0.01)
 
     def close(self):
         self._closing = True
         if self.connection:
             self.connection.close()
         self._connected.clear()
+
+rabbit_sender = RabbitSender()
+
+def call_language_agent(request: str) -> str:
+    """
+    Calls the language agent to generate text based on the request.
+    """
+    try:
+        return rabbit_sender.call(request, routing_key="language-agent")
+    except Exception as e:
+        return f"Error calling language-agent: {e}"
+
+def call_diagram_agent(request: str) -> str:
+    """
+    Calls the diagram agent to generate diagrams based on the request.
+    """
+    try:
+        return rabbit_sender.call(request, routing_key="diagram-agent")
+    except Exception as e:
+        return f"Error calling diagram-agent: {e}"
+
+def call_software_agent(request: str) -> str:
+    """
+    Calls the software agent to generate software based on the request.
+    """
+    try:
+        return rabbit_sender.call(request, routing_key="software-agent")
+    except Exception as e:
+        return f"Error calling software-agent: {e}"
+
+logfire.configure(token=os.getenv("LOGFIRE_WRITE_TOKEN"), service_name="orchestator")
 
 class RabbitManager:
     def __init__(self, agent: Agent):
@@ -223,4 +228,3 @@ async def health_check():
     Health check endpoint.
     """
     return {"status": "ok"}
-
