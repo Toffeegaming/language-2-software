@@ -27,7 +27,7 @@ class OpenAiManager:
             if not self.available_models:
                 return {"error": "No available models found."}
             else:
-                model = self.available_models[1]
+                model = self.available_models[0] # use the first available model, which is codex-mini-latest
 
         response = await self.client.responses.create(
             model=model,
