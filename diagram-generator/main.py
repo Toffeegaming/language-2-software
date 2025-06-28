@@ -4,6 +4,58 @@ from contextlib import asynccontextmanager
 import os
 from openai_manager import OpenAiManager
 import logfire
+import pika
+import threading
+import asyncio
+
+class RabbitManager:
+    def __init__(self, oai_manager: OpenAiManager):
+        self.connection = pika.BlockingConnection(pika.ConnectionParameters('rabbitmq'))
+        self.thread = None
+        self.oai_manager = oai_manager
+
+    def get_channel(self):
+        return self.connection.channel()
+
+    def start_in_background(self):
+        self.thread = threading.Thread(target=self.setup_queue, daemon=True)
+        self.thread.start()
+
+    async def process_message(self, message):
+        response = await self.oai_manager.get_response(message)
+        return response.output
+
+    def setup_queue(self):
+        channel = self.get_channel()
+        channel.queue_declare(queue='diagram-generator', durable=True)
+
+        channel.basic_qos(prefetch_count=1)
+        channel.basic_consume(queue='diagram-generator', on_message_callback=self.on_request)
+
+        print("Waiting RPC request on 'diagram-generator' queue.")
+        channel.start_consuming()
+
+    def on_request(self, ch, method, properties, body):
+        message = str(body)
+
+        try:
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+            response = loop.run_until_complete(self.process_message(message))
+        finally:
+            loop.close()
+
+        ch.basic_publish(exchange='',
+                         routing_key=properties.reply_to,
+                         body=response,
+                         properties=pika.BasicProperties(
+                             correlation_id=properties.correlation_id,
+                             delivery_mode = pika.DeliveryMode.Persistent,
+                         ))
+        ch.basic_ack(delivery_tag=method.delivery_tag)
+
+    def close(self):
+        self.connection.close()
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -12,7 +64,10 @@ async def lifespan(app: FastAPI):
 
     app.state.oai_manager = oai_manager
 
+    app.state.rabbit_manager = RabbitManager(oai_manager)
+    app.state.rabbit_manager.start_in_background()
     yield
+    app.state.rabbit_manager.close()
 
 app = FastAPI(lifespan=lifespan)
 
@@ -27,12 +82,3 @@ async def health_check():
 async def get_models(request: Request):
     oai_manager = request.app.state.oai_manager
     return {"available_models": oai_manager.available_models}
-
-@app.post("/response")
-async def response(request: Request, message: str, model: str = None, stream: bool = False):
-    oai_manager = request.app.state.oai_manager
-
-    if stream:
-        return StreamingResponse(oai_manager.get_streaming_response(message, model), media_type="text/plain")
-    else:
-        return  await oai_manager.get_response(message, model)
