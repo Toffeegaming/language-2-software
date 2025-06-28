@@ -27,7 +27,7 @@ class OpenAiManager:
             if not self.available_models:
                 return {"error": "No available models found."}
             else:
-                model = self.available_models[0] # use the first available model, which is codex-mini-latest
+                model = self.available_models[1] # use the first available model, which is codex-mini-latest
 
         response = await self.client.responses.create(
             model=model,
@@ -35,14 +35,9 @@ class OpenAiManager:
             input=message,
         )
 
-        output = response.output_text
-        # Remove both escaped and unescaped double quotes at the start/end
-        if (output.startswith('"""') and output.endswith('"""')) or (output.startswith('"') and output.endswith('"')):
-            output = output[1:-1]
-        if (output.startswith('\\"') and output.endswith('\\"')):
-            output = output[2:-2]
+        print(f"Response: {response.output_text}")
 
-        return output
+        return response.output_text
 
     async def get_streaming_response(self, message: str, model: str):
         if not model:

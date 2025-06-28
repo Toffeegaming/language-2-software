@@ -3,20 +3,119 @@ from contextlib import asynccontextmanager
 import os
 import logfire
 from pydantic_ai import Agent
-import requests
 import pika
 import threading
 import asyncio
+import uuid
+import time
 
-def call_mermaid_generator(request: str) -> str:
-    url = "http://diagram-generator:8002/response"
-    payload = {"message": request}
+class RabbitSender:
+    def __init__(self):
+        self.connection = None
+        self.channel = None
+        self.callback_queue = None
+        self.response = None
+        self.corr_id = None
+        self._lock = threading.Lock()
+        self._connected = threading.Event()
+        self._closing = False
+        self._consumer_tag = None
+        self._start_connection_thread()
+
+    def _start_connection_thread(self):
+        t = threading.Thread(target=self._run, daemon=True)
+        t.start()
+
+    def _run(self):
+        while not self._closing:
+            try:
+                self._connect()
+                self._connected.set()
+                self.connection.ioloop.start()
+            except Exception as e:
+                print(f"RabbitMQ connection error: {e}, retrying in 5s...")
+                self._connected.clear()
+                time.sleep(5)
+
+    def _connect(self):
+        params = pika.ConnectionParameters('rabbitmq')
+        self.connection = pika.SelectConnection(
+            parameters=params,
+            on_open_callback=self.on_connection_open,
+            on_open_error_callback=self.on_connection_open_error,
+            on_close_callback=self.on_connection_closed
+        )
+
+    def on_connection_open(self, connection):
+        connection.channel(on_open_callback=self.on_channel_open)
+
+    def on_connection_open_error(self, connection, exc):
+        print(f"Connection open failed: {exc}")
+        self.connection.ioloop.stop()
+
+    def on_connection_closed(self, connection, reason):
+        print(f"Connection closed: {reason}")
+        self._connected.clear()
+        if not self._closing:
+            self.connection.ioloop.stop()
+
+    def on_channel_open(self, channel):
+        self.channel = channel
+        self.channel.queue_declare('', exclusive=True, durable=True, callback=self.on_queue_declared)
+
+    def on_queue_declared(self, method_frame):
+        self.callback_queue = method_frame.method.queue
+        self._consumer_tag = self.channel.basic_consume(
+            queue=self.callback_queue,
+            on_message_callback=self.on_response,
+            auto_ack=True
+        )
+
+    def on_response(self, ch, method, properties, body):
+        if self.corr_id == properties.correlation_id:
+            self.response = body
+
+    def call(self, message: str, timeout=10):
+        if not self._connected.wait(timeout=timeout):
+            raise Exception("RabbitMQ not connected")
+        with self._lock:
+            self.response = None
+            self.corr_id = str(uuid.uuid4())
+            print("Calling diagram generator...")
+            self.channel.basic_publish(
+                exchange='',
+                routing_key='diagram-generator',
+                properties=pika.BasicProperties(
+                    reply_to=self.callback_queue,
+                    correlation_id=self.corr_id,
+                    delivery_mode=pika.DeliveryMode.Persistent
+                ),
+                body=message
+            )
+            # Wait for response
+            start = time.time()
+            while self.response is None and (time.time() - start) < timeout:
+                time.sleep(0.01)
+            if self.response is None:
+                raise TimeoutError("No response from RPC call")
+            return self.response
+
+    def close(self):
+        self._closing = True
+        if self.connection:
+            self.connection.close()
+        self._connected.clear()
+
+rabbit_sender = RabbitSender()
+
+def call_diagram_generator(request: str) -> str:
+    """
+    Calls the diagram generator to generate a diagram based on the request.
+    """
     try:
-        resp = requests.post(url, params=payload)
-        resp.raise_for_status()
-        return resp.text
+        return rabbit_sender.call(request)
     except Exception as e:
-        return f"Error calling language-generator: {e}"
+        return f"Error calling diagram-generator: {e}"
 
 logfire.configure(token=os.getenv("LOGFIRE_WRITE_TOKEN"), service_name="diagram-agent")
 
@@ -75,7 +174,7 @@ async def lifespan(app: FastAPI):
     agent = Agent(
         'gpt-4o-2024-05-13',
         deps_type=str,
-        tools=[call_mermaid_generator],
+        tools=[call_diagram_generator],
         system_prompt=(
             "You're a diagram agent. You generate diagrams based on user requests. Use your different tools to create diagrams in the requested format."
         ),

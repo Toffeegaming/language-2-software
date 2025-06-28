@@ -83,6 +83,7 @@ class RabbitSender:
         corr_id = str(uuid.uuid4())
         with self._lock:
             self.responses[corr_id] = None
+            print(f"Calling {routing_key}...")
             self.channel.basic_publish(
                 exchange='',
                 routing_key=routing_key,

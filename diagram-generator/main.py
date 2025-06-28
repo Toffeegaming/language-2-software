@@ -1,5 +1,4 @@
 from fastapi import FastAPI, Request
-from fastapi.responses import StreamingResponse
 from contextlib import asynccontextmanager
 import os
 from openai_manager import OpenAiManager
@@ -22,8 +21,10 @@ class RabbitManager:
         self.thread.start()
 
     async def process_message(self, message):
+        print("Got request...")
         response = await self.oai_manager.get_response(message)
-        return response.output
+        print("Returning request...")
+        return response
 
     def setup_queue(self):
         channel = self.get_channel()
