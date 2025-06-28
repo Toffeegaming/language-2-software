@@ -72,7 +72,7 @@ class RabbitManager:
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    app.state.agent = Agent(
+    agent = Agent(
         'gpt-4o-2024-05-13',
         deps_type=str,
         tools=[call_mermaid_generator],
@@ -82,7 +82,7 @@ async def lifespan(app: FastAPI):
         instrument=True,
     )
 
-    app.state.rabbit_manager = RabbitManager(app.state.agent)
+    app.state.rabbit_manager = RabbitManager(agent)
     app.state.rabbit_manager.start_in_background()
     yield
     app.state.rabbit_manager.close()
@@ -93,9 +93,3 @@ logfire.instrument_fastapi(app, capture_headers=True)
 @app.head("/")
 async def health_check():
     return {"status": "ok"}
-
-@app.post("/run")
-async def run_agent(request: Request, message: str):
-    agent = request.app.state.agent
-    response = await agent.run(message)
-    return response.output
