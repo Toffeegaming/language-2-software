@@ -40,6 +40,9 @@ class OpenAiManager:
             instructions=self.prompt,
             input=message,
         )
+
+        print(f"Response: {response.output_text}")
+
         return response.output_text
 
     async def get_streaming_response(self, message: str, model: str):

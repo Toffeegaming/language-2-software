@@ -2,3 +2,5 @@ openai
 fastapi
 uvicorn
 logfire[fastapi]
+pika
+asyncio
