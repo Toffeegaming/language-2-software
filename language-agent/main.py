@@ -75,7 +75,7 @@ class RabbitSender:
         if self.corr_id == properties.correlation_id:
             self.response = body
 
-    def call(self, message: str, timeout=10):
+    def call(self, message: str, timeout=120):
         if not self._connected.wait(timeout=timeout):
             raise Exception("RabbitMQ not connected")
         with self._lock:
@@ -147,6 +147,9 @@ class RabbitManager:
         channel.start_consuming()
 
     def on_request(self, ch, method, properties, body):
+        print("Received request...")
+        time.sleep(5) # sleep for 5 seconds to simulate processing time, used for demonstration purposes
+
         message = str(body)
 
         try:
