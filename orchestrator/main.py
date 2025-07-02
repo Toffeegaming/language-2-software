@@ -77,7 +77,7 @@ class RabbitSender:
             if corr_id in self.responses:
                 self.responses[corr_id] = body
 
-    def call(self, message: str, routing_key: str, timeout=10):
+    def call(self, message: str, routing_key: str, timeout=120):
         if not self._connected.wait(timeout=timeout):
             raise Exception("RabbitMQ not connected")
         corr_id = str(uuid.uuid4())
@@ -174,6 +174,7 @@ class RabbitManager:
         channel.start_consuming()
 
     def on_request(self, ch, method, properties, body):
+        print("Received request...")
         message = str(body)
 
         try:
