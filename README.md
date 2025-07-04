@@ -12,7 +12,7 @@ It should contain the following variables, make sure you give them proper values
 ```
 OPENAI_API_KEY=<string>
 MAX_RETRY=<number>
-LOGFIRE_WRITE_TOKEN=<string>
+LOGFIRE_WRITE_TOKEN=<string> | OPTIONAL
 ```
 
 ## Running the stack
