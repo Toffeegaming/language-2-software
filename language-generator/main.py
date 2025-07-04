@@ -73,7 +73,7 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(lifespan=lifespan)
 
-logfire.configure(token=os.getenv("LOGFIRE_WRITE_TOKEN"), service_name="language-generator")
+logfire.configure(token=os.getenv("LOGFIRE_WRITE_TOKEN"), send_to_logfire="if-token-present", service_name="language-generator")
 logfire.instrument_fastapi(app, capture_headers=True)
 
 @app.head("/")
