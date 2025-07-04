@@ -9,7 +9,7 @@ import uuid
 import threading
 import time
 
-logfire.configure(token=os.getenv("LOGFIRE_WRITE_TOKEN"), service_name="api-gateway")
+logfire.configure(token=os.getenv("LOGFIRE_WRITE_TOKEN"), send_to_logfire="if-token-present", service_name="api-gateway")
 
 class RabbitManager:
     def __init__(self):

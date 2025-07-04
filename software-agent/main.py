@@ -118,7 +118,7 @@ def call_code_generator(request: str) -> str:
     except Exception as e:
         return f"Error calling software-generator: {e}"
 
-logfire.configure(token=os.getenv("LOGFIRE_WRITE_TOKEN"), service_name="software-agent")
+logfire.configure(token=os.getenv("LOGFIRE_WRITE_TOKEN"), send_to_logfire="if-token-present", service_name="software-agent")
 
 
 class RabbitManager:
