@@ -144,7 +144,7 @@ def call_software_agent(request: str) -> str:
     except Exception as e:
         return f"Error calling software-agent: {e}"
 
-logfire.configure(token=os.getenv("LOGFIRE_WRITE_TOKEN"), send_to_logfire="if-token-present", service_name="orchestator")
+logfire.configure(token=os.getenv("LOGFIRE_WRITE_TOKEN"), send_to_logfire="if-token-present", service_name="orchestrator")
 
 class RabbitManager:
     def __init__(self, agent: Agent):
